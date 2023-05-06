@@ -1,9 +1,10 @@
 import java.util.Arrays;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class Sorting {
-    // replace with your 
+    // replace with your
     public static final String TEAM_NAME = "baseline";
 
     /**
@@ -29,7 +30,6 @@ public class Sorting {
         ForkJoinPool pool = new ForkJoinPool();
         pool.invoke(new SortTask(data, 0, data.length - 1));
         pool.shutdown();
-//        System.out.println("Final output is " + Arrays.toString(data));
     }
 
     public static class SortTask extends RecursiveAction {
@@ -45,64 +45,65 @@ public class Sorting {
 
         @Override
         protected void compute() {
-//            System.out.println("Compute called with left: " + left + ", right: " + right);
             // Base case:
             if (right - left < BASECASE) {
                 Arrays.sort(data, left, right + 1);
                 return;
             }
 
-            // Partition the array
-            int pivotIndex = partition(data, left, right);
+            // Median-of-three approach:
+            int mid = (left + right) >>> 1;
+            if (data[left] > data[mid]) {
+                swap(data, left, mid);
+            }
+            if (data[mid] > data[right]) {
+                swap(data, mid, right);
+                if (data[left] > data[mid]) {
+                    swap(data, left, mid);
+                }
+            }
+            float pivot1 = data[left];
+            float pivot2 = data[right];
+
+            // Dual pivot quicksort:
+            int lt = left + 1;
+            int gt = right - 1;
+            int i = lt;
+            while (i <= gt) {
+                if (data[i] < pivot1) {
+                    swap(data, i, lt);
+                    lt++;
+                } else if (data[i] >= pivot2) {
+                    while (data[gt] > pivot2 && i < gt) {
+                        gt--;
+                    }
+                    swap(data, i, gt);
+                    gt--;
+                    if (data[i] < pivot1) {
+                        swap(data, i, lt);
+                        lt++;
+                    }
+                }
+                i++;
+            }
+            lt--;
+            gt++;
+            swap(data, left, lt);
+            swap(data, right, gt);
 
             // Create sub-tasks for the left and right partitions
-            SortTask leftTask = new SortTask(data, left, pivotIndex - 1);
-            SortTask rightTask = new SortTask(data, pivotIndex + 1, right);
-//          System.out.println(Arrays.toString(Arrays.copyOfRange(data, left, right)));
+            SortTask leftTask = new SortTask(data, left, lt - 1);
+            SortTask middleTask = new SortTask(data, lt + 1, gt - 1);
+            SortTask rightTask = new SortTask(data, gt + 1, right);
+
             // Fork the sub-tasks and wait for them to complete
             leftTask.fork();
+            middleTask.fork();
             rightTask.fork();
             leftTask.join();
+            middleTask.join();
             rightTask.join();
-            }
         }
-
-    private static int partition(float[] data, int left, int right) {
-        // CODE FOR ALWAYS PICKING THE RIGHT-MOST VALUE AS PIVOT --> WORKS
-//        float pivot = data[right];
-//        int i = left - 1;
-//        for (int j = left; j <= right - 1; j++) {
-//            if (data[j] < pivot) {
-//                i++;
-//                swap(data, i, j);
-//            }
-//        }
-//        swap(data, i+1, right);
-//        return i+1;
-
-        // Median-of-three approach
-        int mid = left + (right - left) / 2;
-        float pivot;
-        if((data[left] <= data[mid] && data[mid] <= data[right])
-        || (data[right] <= data[mid] && data[mid] <= data[left])) {
-            pivot = data[mid];
-            swap(data, mid, right);
-        } else if ((data[left] <= data[right] && data[right] < data[mid])
-        || data[mid] <= data[right] && data[right] <= data[left]) {
-            pivot = data[right];
-        } else {
-            pivot = data[left];
-            swap(data, left, right);
-        }
-        int i = left - 1;
-        for (int j = left; j <= right - 1; j++) {
-            if (data[j] < pivot) {
-                i++;
-                swap(data, i, j);
-            }
-        }
-        swap(data, i+1, right);
-        return i+1;
     }
 
     private static void swap(float[] data, int i, int j) {
@@ -131,4 +132,3 @@ public class Sorting {
         return true;
     }
 }
-
