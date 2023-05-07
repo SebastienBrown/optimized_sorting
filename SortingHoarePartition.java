@@ -24,10 +24,11 @@ import java.util.Arrays;
       * @param data   the array of doubles to be sorted
       */
 
-     private static final int BASECASE = 10000; // Threshold for normal sorting
+     //private static final int BASECASE1 = 10; // Threshold for insertion sort
+     private static final int BASECASE2 = 500; // Threshold for Arrays.sort
 
      public static void parallelSort(float[] data) {
-         ForkJoinPool pool = new ForkJoinPool(32);
+         ForkJoinPool pool = new ForkJoinPool().commonPool();  //hard capped number of threads created due to cost of thread creation overhead
          pool.invoke(new SortTask(data, 0, data.length - 1));
          pool.shutdown();
          //System.out.println("Final output is " + Arrays.toString(data));
@@ -47,18 +48,41 @@ import java.util.Arrays;
          @Override
          protected void compute() {
              //System.out.println("Compute called with left: " + left + ", right: " + right);
-             // Base case:
-             if (right - left < BASECASE) {
-                 Arrays.sort(data, left, right+1);
-                 return;
+
+             //calculate length of subarray
+             int diff=right-left;
+
+             if (diff < BASECASE2) {
+                /* //checks whether array is very small, if so runs insertion sort
+                 if(diff<BASECASE1){
+                    
+                    //iterates along the entire subarray
+                    for (int i = left; i < right+1; ++i) {
+                        //stores the value of the element
+                        float compare = data[i];
+                        int j = i - 1;
+
+                    //if the element at j is larger than compare, moves it to the right and decrement the j pointer
+                     while (j >= left && data[j] > compare) {
+                        data[j + 1] = data[j];
+                        j = j - 1;
+                    }
+                    //moves the element at index i to the right of j
+                    data[j + 1] = compare;
+                }   
+                 return; //completes once subarray is sorted
+                 }*/
+
+                 Arrays.sort(data, left, right+1);  //sorts large subarrays
+                 return; //completes once subarray is sorted
              }
 
-
-        int pivotIndex=partition(data,left,right);
+                //identifies pivot point according to the Hoare partition scheme
+                int pivotIndex=partition(data,left,right);
         
                  // Create sub-tasks for the left and right partitions
                  SortTask leftTask = new SortTask(data, left, pivotIndex);
-             SortTask rightTask = new SortTask(data, pivotIndex + 1, right);
+                SortTask rightTask = new SortTask(data, pivotIndex + 1, right);
                  //System.out.println(Arrays.toString(Arrays.copyOfRange(data, left, right)));
                  // Fork the sub-tasks and wait for them to complete
                  leftTask.fork();
@@ -68,31 +92,40 @@ import java.util.Arrays;
              }
          }
 
+    //implements the Hoare partition scheme for pivot selection
+    //we use this partition scheme since it executes fewer swaps on average than Lomuto's
+    //partition scheme, which is most commonly used
     private static int partition(float[] data, int low, int high) {
-         
+        
+        //stores the indices of the start and end of the subarray
         float pivot = data[low];
         int i = low - 1;
         int j = high + 1;
- 
+
         while (true)
-        {
+        {  
+            //increments the lower index until an element smaller than the pivot is found
             do {
                 i++;
             } while (data[i] < pivot);
- 
+            
+            //decrements the upper index until an element larger than the pivot is found
             do {
                 j--;
             } while (data[j] > pivot);
- 
+
+            //returns the upper pointer if the pointers cross
             if (i >= j) {
                 return j;
             }
- 
+            
+            //swaps the elements before and after the pointer (at indices i and j respectively)
             swap(data, i, j);
         }
      }
      
 
+    //swaps the elements at indices i and j of array data
      private static void swap(float[] data, int i, int j) {
          float temp = data[i];
          data[i] = data[j];
